@@ -8,7 +8,6 @@ import io
 import zipfile
 import base64
 from firebase_init import firebase_init
-from src.document_processor import DocumentProcessor
 
 # --- Firebase Initialization ---
 try:
@@ -21,25 +20,15 @@ except RuntimeError as e:
 st.title("📝 Knowledge Base")
 
 # --- Functions ---
-
-def upload_files(uploaded_files):
-    """Uploads files to Firebase Storage, stores metadata in Firestore, and indexes to RAG."""
-    document_processor = DocumentProcessor()
-    
+def upload_files(uploaded_files):    
     for uploaded_file in uploaded_files:
         st.write(f"Uploading {uploaded_file.name}...")
         try:
             # Upload to Firebase Storage
             file_path = f"knowledge_base/{uploaded_file.name}"
-            
-            # Create reference to the file in the bucket
             blob = bucket.blob(file_path)
             
-            # Reset file pointer
-            uploaded_file.seek(0)
-            file_bytes = uploaded_file.read()
-            
-            # Upload the file's content
+            # Ensure file pointer is at the beginning
             uploaded_file.seek(0)
             blob.upload_from_file(uploaded_file, content_type=uploaded_file.type)
 
@@ -57,23 +46,10 @@ def upload_files(uploaded_files):
             
             st.success(f"✅ Successfully uploaded {uploaded_file.name}")
             
-            # Index document to RAG (Pinecone)
-            st.write(f"📑 Indexing {uploaded_file.name} to knowledge base...")
-            try:
-                chunks_count = document_processor.process_and_index_pdf(
-                    file_bytes=file_bytes,
-                    file_name=uploaded_file.name,
-                    file_metadata={"storage_path": file_path}
-                )
-                st.success(f"✅ Indexed {chunks_count} chunks from {uploaded_file.name}")
-            except Exception as e:
-                st.warning(f"⚠️ File uploaded but indexing failed: {e}")
-
         except Exception as e:
             st.error(f"Error uploading {uploaded_file.name}: {e}")
     
-    st.cache_data.clear()
-    time.sleep(1)
+    fetch_files.clear()
     st.rerun()
 
 @st.cache_data()
@@ -129,19 +105,28 @@ def download_files(selected_indices, df_paginated):
 
 def delete_files(selected_indices, df_paginated):
     """Deletes selected files from Firebase Storage and Firestore."""
-    with st.spinner(text="Deleting documents and related index. It may take several minutes."):
+    with st.spinner(text="Deleting documents"):
         for item in selected_indices:
             doc_id = df_paginated.iloc[item]['id']
             path = df_paginated.iloc[item]['path']
+            file_name = df_paginated.iloc[item]['name']
             
-            db.collection("knowledge_base").document(doc_id).delete()
-            
-            blob = bucket.blob(path)
-            blob.delete()
+            try:
+                # Delete from Firestore
+                db.collection("knowledge_base").document(doc_id).delete()
+                
+                # Delete from Firebase Storage
+                blob = bucket.blob(path)
+                blob.delete()
+                
+            except Exception as e:
+                st.error(f"Error deleting {file_name}: {e}")
     
     st.toast('✔️ The selected documents are deleted.', icon='🎉')
     fetch_files.clear()
-    time.sleep(3)
+    # Reset page if current page becomes empty after deletion
+    if "curr_page" in st.session_state:
+        st.session_state.curr_page = 1
     st.rerun()
 
 # --- File Upload Logic ---
@@ -179,7 +164,7 @@ if file_data:
     page_size = 5
     total_pages = ceil(len(df)/page_size)
 
-    if "curr_page" not in st.session_state.keys():
+    if "curr_page" not in st.session_state:
         st.session_state.curr_page = 1
 
     curr_page = min(st.session_state['curr_page'], total_pages)
@@ -230,20 +215,21 @@ if file_data:
             if download_button:
                 with st.spinner("Preparing files for download..."):
                     zip_data = download_files(selected_docs, df_paginated)
-                    b64 = base64.b64encode(zip_data).decode()
-                    html = f"""
-                    <html>
-                        <body>
-                        <a id="autodownload" href="data:application/zip;base64,{b64}" download="Download.zip"></a>
-                        <script>
-                            const link = document.getElementById('autodownload');
-                            if (link) {{ link.click(); }}
-                        </script>
-                        </body>
-                    </html>
-                    """
-                    components.html(html, height=0, width=0)
-                    st.toast("✔️ The selected documents are downloaded.', icon='🎉")    
+                    if zip_data:
+                        b64 = base64.b64encode(zip_data).decode()
+                        html = f"""
+                        <html>
+                            <body>
+                            <a id="autodownload" href="data:application/zip;base64,{b64}" download="Download.zip"></a>
+                            <script>
+                                const link = document.getElementById('autodownload');
+                                if (link) {{ link.click(); }}
+                            </script>
+                            </body>
+                        </html>
+                        """
+                        components.html(html, height=0, width=0)
+                        st.toast("✔️ The selected documents are downloaded.", icon='🎉')    
         with col2:
             delete_button = st.button("🗑️ Delete", key="delete_docs", use_container_width=True)
             if delete_button:

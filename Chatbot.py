@@ -1,6 +1,4 @@
-import os
 import streamlit as st
-from src.rag_agent import RAGAgentService
 
 with st.sidebar:
     openai_api_key = st.text_input("OpenAI API Key", key="chatbot_api_key", type="password")
@@ -10,12 +8,6 @@ with st.sidebar:
     
 st.title("💬 RAG Chatbot")
 st.caption("🚀 A Streamlit chatbot powered by RAG with knowledge base")
-
-# Initialize RAG agent
-@st.cache_resource
-def get_rag_agent():
-    """Initialize and cache RAG agent"""
-    return RAGAgentService()
 
 # Initialize session state
 if "messages" not in st.session_state:
@@ -33,24 +25,13 @@ if prompt := st.chat_input("Ask a question about your documents..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
     
-    # Get RAG agent response
+    # Get assistant response
     with st.chat_message("assistant"):
-        with st.spinner("Searching knowledge base..."):
+        with st.spinner("Thinking..."):
             try:
-                rag_agent = get_rag_agent()
-                response = rag_agent.query(prompt)
-                
-                # Extract the final response from agent
-                # The agent returns messages, get the last AI message
-                if response and "messages" in response:
-                    # Get the last assistant message
-                    ai_messages = [m for m in response["messages"] if hasattr(m, 'type') and m.type == 'ai']
-                    if ai_messages:
-                        answer = ai_messages[-1].content
-                    else:
-                        answer = "I apologize, but I couldn't generate a response."
-                else:
-                    answer = "I apologize, but I couldn't generate a response."
+                # TODO: Implement RAG agent functionality
+                # Placeholder response until RAG agent is implemented
+                answer = "I'm sorry, but the RAG functionality is currently being updated. Please check back soon!"
                 
                 # Display and store response
                 st.write(answer)
