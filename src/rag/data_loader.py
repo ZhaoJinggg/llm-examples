@@ -6,18 +6,21 @@ from langchain_core.documents import Document
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 def load_documents(uploaded_file: UploadedFile, ref_id: str) -> List[Document]:
-    # Temporary file to store documents
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-        uploaded_file.seek(0)
-        tmp_file.write(uploaded_file.getvalue())
-        tmp_file_path = tmp_file.name
-
+    # 1. Initialize temporary file path
+    tmp_file_path = None
+    
     try:
-        # Load the documents
+        # 2. Temporary file to store documents
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            uploaded_file.seek(0)
+            tmp_file.write(uploaded_file.getvalue())
+            tmp_file_path = tmp_file.name
+
+        # 3. Load the documents
         loader = PyPDFLoader(tmp_file_path)
         documents = loader.load()
         
-        # Add metadata about the source file
+        # 4. Add metadata about the source file
         for doc in documents:
             doc.metadata["name"] = uploaded_file.name
             doc.metadata["ref_id"] = ref_id
@@ -25,6 +28,6 @@ def load_documents(uploaded_file: UploadedFile, ref_id: str) -> List[Document]:
         return documents
     
     finally:
-        # Clean up the temporary file
+        # 6. Clean up the temporary file
         if os.path.exists(tmp_file_path):
             os.remove(tmp_file_path)

@@ -1,11 +1,18 @@
+import os
 import streamlit as st
+from src.rag.rag_agent import Agent
 
 with st.sidebar:
     openai_api_key = st.text_input("OpenAI API Key", key="chatbot_api_key", type="password")
     "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
     "[View the source code](https://github.com/streamlit/llm-examples/blob/main/Chatbot.py)"
     "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/llm-examples?quickstart=1)"
-    
+   
+@st.cache_resource
+def get_agent():
+    # Initialize the RAG Agent
+    return Agent()
+ 
 st.title("💬 RAG Chatbot")
 st.caption("🚀 A Streamlit chatbot powered by RAG with knowledge base")
 
@@ -29,9 +36,22 @@ if prompt := st.chat_input("Ask a question about your documents..."):
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
-                # TODO: Implement RAG agent functionality
-                # Placeholder response until RAG agent is implemented
-                answer = "I'm sorry, but the RAG functionality is currently being updated. Please check back soon!"
+                # Create the agent
+                agent = get_agent()
+                # Invoke the agent
+                response = agent.agent.invoke({"messages": st.session_state.messages})
+                # Normalize response content across possible return shapes
+                if isinstance(response, dict):
+                   # Common LangChain shapes
+                    if "content" in response:
+                        answer = response["content"]
+                    elif "messages" in response and isinstance(response["messages"], list) and response["messages"]:
+                        last = response["messages"][-1]
+                        answer = getattr(last, "content", None) or last.get("content", "")
+                    else:
+                        answer = str(response)
+                else:
+                    answer = str(response)
                 
                 # Display and store response
                 st.write(answer)

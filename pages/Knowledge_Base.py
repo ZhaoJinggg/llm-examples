@@ -6,8 +6,11 @@ from math import ceil
 import io
 import zipfile
 import base64
+import time
 from src.firebase_init import firebase_init
 from src.rag.data_loader import load_documents
+from src.rag.text_splitter import chunk_documents
+from src.rag.vectorstore import index_documents, delete_documents
 
 # --- Firebase Initialization ---
 try:
@@ -20,11 +23,26 @@ except RuntimeError as e:
 st.title("📝 Knowledge Base")
 
 # --- Functions ---
+def ingest_files(uploaded_file, ref_id: str):
+    # Load the documents for indexing 
+    documents = load_documents(uploaded_file, ref_id)
+    st.toast(f"📄 Loaded {len(documents)} pages of documents...", icon='⏳')
+    
+    # Chunk the documents
+    chunks = chunk_documents(documents)
+    st.toast(f"✂️ Split {uploaded_file.name} into {len(chunks)} chunks.", icon='⏳') 
+         
+    # Index these documents 
+    ids = index_documents(chunks)
+    st.toast(f"📚 Indexed {len(ids)} chunks to Vector Store.", icon='⏳')
+    
+    return len(ids)
+    
 def upload_files(uploaded_files):    
     for uploaded_file in uploaded_files:
         st.write(f"Uploading {uploaded_file.name}...")
         try:
-            # Upload to Firebase Storage
+            # 1. Upload to Firebase Storage
             file_path = f"knowledge_base/{uploaded_file.name}"
             blob = bucket.blob(file_path)
             
@@ -32,7 +50,7 @@ def upload_files(uploaded_files):
             uploaded_file.seek(0)
             blob.upload_from_file(uploaded_file, content_type=uploaded_file.type)
 
-            # Store Metadata in Firestore
+            # 2. Store Metadata in Firestore
             file_metadata = {
                 "name": uploaded_file.name,
                 "type": uploaded_file.type,
@@ -44,16 +62,19 @@ def upload_files(uploaded_files):
             # Add metadata to the "knowledge_base" collection
             update_time, doc_ref = db.collection("knowledge_base").add(file_metadata)
 
-            # Load the documents for indexing 
-            documents = load_documents(uploaded_file, ref_id=doc_ref.id)
-            # TODO: Index these documents (Vector Store)
+            # 3. Ingest the files
+            chunk_count = ingest_files(uploaded_file, ref_id=doc_ref.id) 
             
+            # Only show when all steps are successful
             st.success(f"✅ Successfully uploaded {uploaded_file.name}")
             
         except Exception as e:
-            st.error(f"Error uploading {uploaded_file.name}: {e}")
+            # Otherwise, show the error
+            st.error(f"❌ Error uploading {uploaded_file.name}: {e}")
     
     fetch_files.clear()
+    time.sleep(1)
+    # Refresh the page
     st.rerun()
 
 @st.cache_data()
@@ -108,7 +129,8 @@ def download_files(selected_indices, df_paginated):
     return zip_buffer.getvalue()
 
 def delete_files(selected_indices, df_paginated):
-    """Deletes selected files from Firebase Storage and Firestore."""
+    """Deletes selected files from Firebase Storage, Firestore, and Pinecone."""
+    ref_ids = []
     with st.spinner(text="Deleting documents"):
         for item in selected_indices:
             doc_id = df_paginated.iloc[item]['id']
@@ -122,9 +144,16 @@ def delete_files(selected_indices, df_paginated):
                 # Delete from Firebase Storage
                 blob = bucket.blob(path)
                 blob.delete()
-                
+
+                ref_ids.append(doc_id)
             except Exception as e:
                 st.error(f"Error deleting {file_name}: {e}")
+        
+        if ref_ids:
+            try:
+                delete_documents(ref_ids)
+            except Exception as e:
+                st.error(f"Error removing vectors for {len(ref_ids)} document(s): {e}")
     
     st.toast('✔️ The selected documents are deleted.', icon='🎉')
     fetch_files.clear()
