@@ -3,11 +3,11 @@ import streamlit.components.v1 as components
 import pandas as pd
 from firebase_admin import firestore
 from math import ceil
-import time
 import io
 import zipfile
 import base64
-from firebase_init import firebase_init
+from src.firebase_init import firebase_init
+from src.rag.data_loader import load_documents
 
 # --- Firebase Initialization ---
 try:
@@ -42,7 +42,11 @@ def upload_files(uploaded_files):
             }
             
             # Add metadata to the "knowledge_base" collection
-            db.collection("knowledge_base").add(file_metadata)
+            update_time, doc_ref = db.collection("knowledge_base").add(file_metadata)
+
+            # Load the documents for indexing 
+            documents = load_documents(uploaded_file, ref_id=doc_ref.id)
+            # TODO: Index these documents (Vector Store)
             
             st.success(f"✅ Successfully uploaded {uploaded_file.name}")
             
