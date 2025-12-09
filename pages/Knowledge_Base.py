@@ -10,7 +10,7 @@ import time
 from src.firebase_init import firebase_init
 from src.rag.data_loader import load_documents
 from src.rag.text_splitter import chunk_documents
-from src.rag.vectorstore import index_documents, delete_documents
+from src.rag.vectorstore import index_documents, delete_index
 
 # --- Firebase Initialization ---
 try:
@@ -36,7 +36,6 @@ def ingest_files(uploaded_file, ref_id: str):
     ids = index_documents(chunks)
     st.toast(f"📚 Indexed {len(ids)} chunks to Vector Store.", icon='⏳')
     
-    return len(ids)
     
 def upload_files(uploaded_files):    
     for uploaded_file in uploaded_files:
@@ -59,11 +58,22 @@ def upload_files(uploaded_files):
                 "file_size": uploaded_file.size
             }
             
-            # Add metadata to the "knowledge_base" collection
-            update_time, doc_ref = db.collection("knowledge_base").add(file_metadata)
+            # Check if file with same name exists
+            existing_docs = list(db.collection("knowledge_base").where("name", "==", uploaded_file.name).stream())
+            
+            if existing_docs:
+                # Update existing document
+                doc_ref = existing_docs[0].reference
+                doc_ref.update(file_metadata)
+            else:
+                # Add new document
+                update_time, doc_ref = db.collection("knowledge_base").add(file_metadata)
 
+            # Reset file pointer before ingesting
+            uploaded_file.seek(0)
+            
             # 3. Ingest the files
-            chunk_count = ingest_files(uploaded_file, ref_id=doc_ref.id) 
+            ingest_files(uploaded_file, ref_id=doc_ref.id) 
             
             # Only show when all steps are successful
             st.success(f"✅ Successfully uploaded {uploaded_file.name}")
@@ -151,7 +161,7 @@ def delete_files(selected_indices, df_paginated):
         
         if ref_ids:
             try:
-                delete_documents(ref_ids)
+                delete_index(ref_ids)
             except Exception as e:
                 st.error(f"Error removing vectors for {len(ref_ids)} document(s): {e}")
     

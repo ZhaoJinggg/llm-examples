@@ -2,12 +2,13 @@ from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
 from src.config import Config
-from src.rag.vectorstore import get_vector_store
+from src.rag.retriever import hybrid_retriever
+from src.rag.reranker import rerank_documents
 
 class Agent:
     def __init__(self):
-        # Initialize Vector Store
-        self.vector_store = get_vector_store()
+        # Initialize Hybrid Retriever
+        self.retriever = hybrid_retriever()
         
         # Initialize Chat Model
         self.model = init_chat_model(
@@ -20,17 +21,18 @@ class Agent:
         @tool(response_format="content_and_artifact")
         def retrieve_context(query: str):
             """Retrieve information to help answer a query."""
-            retrieved_docs = self.vector_store.similarity_search(query, k=Config.RETRIEVER_K)
+            # Invoke Hybrid Search
+            retrieved_docs = self.retriever.invoke(query)
+
+            # Rerank Documents
+            reranked_docs = rerank_documents(query, retrieved_docs, top_n=Config.RERANKER_TOP_N)
+            
+            # Convert docs to a serializable artifact representation
             serialized = "\n\n".join(
                 (f"Source: {doc.metadata}\nContent: {doc.page_content}")
-                for doc in retrieved_docs
+                for doc in reranked_docs
             )
-            # Convert docs to a serializable artifact representation
-            artifacts = [
-                {"metadata": doc.metadata, "content": doc.page_content}
-                for doc in retrieved_docs
-            ]
-            return serialized, artifacts
+            return serialized, reranked_docs
         
         # Initialize LangChain Agent
         self.agent = create_agent(

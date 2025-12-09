@@ -1,20 +1,27 @@
 import os
 import streamlit as st
 from src.rag.rag_agent import Agent
+from src.rag.reranker import get_reranker_model
+
+st.title("💬 RAG Chatbot")
+st.caption("🚀 A Streamlit chatbot powered by RAG with knowledge base")
 
 with st.sidebar:
     openai_api_key = st.text_input("OpenAI API Key", key="chatbot_api_key", type="password")
     "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
     "[View the source code](https://github.com/streamlit/llm-examples/blob/main/Chatbot.py)"
     "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/llm-examples?quickstart=1)"
-   
-@st.cache_resource
-def get_agent():
-    # Initialize the RAG Agent
-    return Agent()
  
-st.title("💬 RAG Chatbot")
-st.caption("🚀 A Streamlit chatbot powered by RAG with knowledge base")
+# Initialize Reranker model
+with st.spinner("Loading Reranker Model..."):
+    get_reranker_model()
+
+@st.cache_resource(show_spinner="Loading Agent Model...")
+def get_agent():
+    return Agent()
+
+# Initialize RAG Agent
+rag_agent = get_agent()
 
 # Initialize session state
 if "messages" not in st.session_state:
@@ -35,11 +42,9 @@ if prompt := st.chat_input("Ask a question about your documents..."):
     # Get assistant response
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            try:
-                # Create the agent
-                agent = get_agent()
+            try:   
                 # Invoke the agent
-                response = agent.agent.invoke({"messages": st.session_state.messages})
+                response = rag_agent.agent.invoke({"messages": st.session_state.messages})
                 # Normalize response content across possible return shapes
                 if isinstance(response, dict):
                    # Common LangChain shapes
