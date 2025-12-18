@@ -1,4 +1,3 @@
-import os
 import streamlit as st
 from src.rag.rag_agent import Agent
 from src.rag.reranker import get_reranker_model
@@ -58,6 +57,17 @@ if prompt := st.chat_input("Ask a question about your documents..."):
                 else:
                     answer = str(response)
                 
+                # Format the answer for structured output
+                if isinstance(answer, list):
+                    text_parts = []
+                    for part in answer:
+                        if isinstance(part, dict) and "text" in part:
+                            text_parts.append(part["text"])
+                        elif isinstance(part, str):
+                            text_parts.append(part)
+                    if text_parts:
+                        answer = "".join(text_parts)
+
                 # Display and store response
                 st.write(answer)
                 st.session_state.messages.append({"role": "assistant", "content": answer})

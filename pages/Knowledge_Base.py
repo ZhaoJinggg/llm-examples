@@ -8,6 +8,7 @@ import zipfile
 import base64
 import time
 from src.firebase_init import firebase_init
+from google.cloud.firestore_v1 import FieldFilter
 from src.rag.data_loader import load_documents
 from src.rag.text_splitter import chunk_documents
 from src.rag.vectorstore import index_documents, delete_index
@@ -33,9 +34,8 @@ def ingest_files(uploaded_file, ref_id: str):
     st.toast(f"✂️ Split {uploaded_file.name} into {len(chunks)} chunks.", icon='⏳') 
          
     # Index these documents 
-    ids = index_documents(chunks)
-    st.toast(f"📚 Indexed {len(ids)} chunks to Vector Store.", icon='⏳')
-    
+    index_documents(chunks)
+    st.toast(f"📚 Indexed {len(chunks)} chunks to Vector Store.", icon='⏳') 
     
 def upload_files(uploaded_files):    
     for uploaded_file in uploaded_files:
@@ -59,8 +59,7 @@ def upload_files(uploaded_files):
             }
             
             # Check if file with same name exists
-            existing_docs = list(db.collection("knowledge_base").where("name", "==", uploaded_file.name).stream())
-            
+            existing_docs = list(db.collection("knowledge_base").where(filter=FieldFilter("name", "==", uploaded_file.name)).stream())   
             if existing_docs:
                 # Update existing document
                 doc_ref = existing_docs[0].reference

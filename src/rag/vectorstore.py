@@ -2,27 +2,16 @@ from typing import List
 from langchain_core.documents import Document
 from src.rag.retriever import hybrid_retriever
 
-def index_documents(chunks: List[Document]) -> List[str]:
+def index_documents(chunks: List[Document]) -> None:
     if not chunks:
-        return []
+        return
     
-    # 1. Initialize the hybrid retriever
     retriever = hybrid_retriever()
-
-    # 2. Extract documents and metadatas
     documents  = [doc.page_content for doc in chunks]
     metadatas = [doc.metadata for doc in chunks]
 
-    # 3. Delete existing vectors to prevent duplicates
-    ref_ids = list({m.get("ref_id") for m in metadatas if m.get("ref_id")})
-    if ref_ids:
-        delete_index(ref_ids)
-
-    # 4. Upload Dense + Sparse Upsert
-    ids = retriever.add_texts(documents, metadatas=metadatas)
-    
-    return ids
-    
+    # Upload Dense + Sparse Upsert
+    retriever.add_texts(documents, metadatas=metadatas)
 
 def delete_index(ref_ids: List[str]) -> None:
     # Remove empty values and duplicates
@@ -39,8 +28,6 @@ def delete_index(ref_ids: List[str]) -> None:
     
     try:
         # Delete all vectors with the given ref_ids
-        index.delete(
-            filter={"ref_id": {"$in": unique_ids}}
-        )
+        index.delete(filter={"ref_id": {"$in": unique_ids}})
     except Exception as exc:
         raise RuntimeError(f"Failed to delete vectors for ref_ids {unique_ids}") from exc

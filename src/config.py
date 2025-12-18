@@ -1,4 +1,5 @@
 import os
+import torch
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -22,11 +23,13 @@ class Config:
     CHAT_MODEL_MAX_TOKENS = 1000
 
     # Embeddings Model Configuration
-    EMBEDDINGS_MODEL = "models/gemini-embedding-001"
-
+    EMBEDDINGS_MODEL = "BAAI/bge-m3"
+    EMBEDDINGS_MODEL_ENCODE_KWARGS = {'normalize_embeddings': True}
+    EMBEDDINGS_MODEL_KWARGS = {"device": "cuda" if torch.cuda.is_available() else "cpu"}
+    
     # Pinecone Index Configuration
-    # PINECONE_INDEX_NAME = "knowledge-base"
-    PINECONE_INDEX_NAME = "hybrid-search-index"
+    PINECONE_INDEX_NAME = "knowledge-base"
+    #PINECONE_INDEX_NAME = "hybrid-search-index"
 
     # Text Splitter Configuration
     TEXT_SPLITTER_CHUNK_SIZE = 400
@@ -35,11 +38,11 @@ class Config:
     
     # Configure Reranker model
     RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
-    RERANKER_TOP_N = 3
+    RERANKER_TOP_N = 5
 
     # Retriever Configuration 
     RETRIEVER_ALPHA = 0.7
-    RETRIEVER_K = 20 
+    RETRIEVER_K = 10
 
     # System Prompt
     SYSTEM_PROMPT = (
