@@ -176,7 +176,7 @@ with st.expander("Upload New Files", expanded=False):
     with st.form("upload_form", clear_on_submit=True):
         uploaded_files = st.file_uploader(
             "Upload your materials",
-            type=["pdf"],
+            type=["pdf", "txt", "md", "docx", "csv"],
             accept_multiple_files=True,
         )
         submitted = st.form_submit_button("Upload Files")

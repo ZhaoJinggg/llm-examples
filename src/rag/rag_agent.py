@@ -1,7 +1,7 @@
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
-from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_tavily import TavilySearch
 from src.config import Config
 from src.rag.retriever import hybrid_retriever
 from src.rag.reranker import rerank_documents
@@ -10,7 +10,8 @@ class Agent:
     def __init__(self):
         # Initialize Hybrid Retriever
         self.retriever = hybrid_retriever()
-        
+        # Initialize Tavily Search Tool
+        self.tavily_tool = TavilySearch(max_results=5)
         # Initialize Chat Model
         self.model = init_chat_model(
             model=Config.CHAT_MODEL_NAME,
@@ -39,10 +40,10 @@ class Agent:
         @tool
         def web_search(query: str):
             """Search the web for information using Tavily."""
-            # Instantiate Tavily tool (requires TAVILY_API_KEY in env)
-            tool = TavilySearchResults(max_results=5)
+            # Invoke Tavily Search
+            web_search_results = self.tavily_tool.invoke(query)
             # Return results
-            return tool.invoke(query)
+            return web_search_results
 
         # Specialized Sub-Agents
         knowledge_agent = create_agent(

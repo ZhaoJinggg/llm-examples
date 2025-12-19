@@ -1,4 +1,6 @@
 import streamlit as st
+import os
+from src.config import Config
 from src.rag.rag_agent import Agent
 from src.rag.reranker import get_reranker_model
 
@@ -6,21 +8,24 @@ st.title("💬 RAG Chatbot")
 st.caption("🚀 A Streamlit chatbot powered by RAG with knowledge base")
 
 with st.sidebar:
-    openai_api_key = st.text_input("OpenAI API Key", key="chatbot_api_key", type="password")
-    "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
+    google_api_key = st.text_input("Google API Key", key="google_api_key", type="password")
+    "[Get a Google API key](https://makersuite.google.com/app/apikey)"
     "[View the source code](https://github.com/streamlit/llm-examples/blob/main/Chatbot.py)"
-    "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/llm-examples?quickstart=1)"
- 
+
 # Initialize Reranker model
 with st.spinner("Loading Reranker Model..."):
     get_reranker_model()
 
 @st.cache_resource(show_spinner="Loading Agent Model...")
-def get_agent():
+def get_agent(api_key=None):
+    if api_key:
+        os.environ["GOOGLE_API_KEY"] = api_key
+    elif Config.GOOGLE_API_KEY:
+        os.environ["GOOGLE_API_KEY"] = Config.GOOGLE_API_KEY
     return Agent()
 
 # Initialize RAG Agent
-rag_agent = get_agent()
+rag_agent = get_agent(google_api_key)
 
 # Initialize session state
 if "messages" not in st.session_state:
@@ -38,41 +43,69 @@ if prompt := st.chat_input("Ask a question about your documents..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
     
-    # Get assistant response
+    # Get assistant response with streaming
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            try:   
-                # Invoke the agent
-                response = rag_agent.agent.invoke({"messages": st.session_state.messages})
-                # Normalize response content across possible return shapes
-                if isinstance(response, dict):
-                   # Common LangChain shapes
-                    if "content" in response:
-                        answer = response["content"]
-                    elif "messages" in response and isinstance(response["messages"], list) and response["messages"]:
-                        last = response["messages"][-1]
-                        answer = getattr(last, "content", None) or last.get("content", "")
-                    else:
-                        answer = str(response)
-                else:
-                    answer = str(response)
+        try:
+            final_answer = ""
+            
+            # Use st.status to show agent progress
+            with st.status("Thinking...", expanded=True) as status:
                 
-                # Format the answer for structured output
-                if isinstance(answer, list):
-                    text_parts = []
-                    for part in answer:
-                        if isinstance(part, dict) and "text" in part:
-                            text_parts.append(part["text"])
-                        elif isinstance(part, str):
-                            text_parts.append(part)
-                    if text_parts:
-                        answer = "".join(text_parts)
-
-                # Display and store response
-                st.write(answer)
-                st.session_state.messages.append({"role": "assistant", "content": answer})
+                # Stream agent updates
+                for chunk in rag_agent.agent.stream(
+                    {"messages": st.session_state.messages},
+                    stream_mode="updates",
+                ):
+                    for step, data in chunk.items():
+                        # Get the last message from this step
+                        if "messages" not in data or not data["messages"]:
+                            continue
+                            
+                        last_message = data["messages"][-1]
+                        
+                        # Handle tool calls (agent deciding to use a tool)
+                        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+                            for tool_call in last_message.tool_calls:
+                                tool_name = tool_call.get("name", "unknown")
+                                st.write(f"🔧 Calling tool: `{tool_name}`")
+                        
+                        # Handle tool responses
+                        elif step == "tools":
+                            tool_name = getattr(last_message, "name", "tool")
+                            st.write(f"✅ `{tool_name}` returned results")
+                        
+                        # Handle model responses (final answer)
+                        elif step == "model":
+                            content = getattr(last_message, "content", None)
+                            if content:
+                                # Check if this is a final response (no tool calls)
+                                if not (hasattr(last_message, "tool_calls") and last_message.tool_calls):
+                                    st.write("✨ Generating response...")
+                                    
+                                    # Extract text content inline
+                                    if isinstance(content, str):
+                                        final_answer = content
+                                    elif isinstance(content, list):
+                                        text_parts = []
+                                        for part in content:
+                                            if isinstance(part, dict) and part.get("type") == "text":
+                                                text_parts.append(part.get("text", ""))
+                                            elif isinstance(part, str):
+                                                text_parts.append(part)
+                                        final_answer = "".join(text_parts)
+                                    else:
+                                        final_answer = str(content)
                 
-            except Exception as e:
-                error_msg = f"Sorry, I encountered an error: {str(e)}"
-                st.error(error_msg)
-                st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                status.update(label="✅ Complete!", state="complete", expanded=False)
+            
+            # Display final answer
+            if final_answer:
+                st.markdown(final_answer)
+                st.session_state.messages.append({"role": "assistant", "content": final_answer})
+            else:
+                st.warning("No response generated.")
+                
+        except Exception as e:
+            error_msg = f"Sorry, I encountered an error: {str(e)}"
+            st.error(error_msg)
+            st.session_state.messages.append({"role": "assistant", "content": error_msg})

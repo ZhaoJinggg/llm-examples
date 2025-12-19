@@ -19,6 +19,7 @@ def get_bm25_encoder():
     bm25_encoder = BM25Encoder.default()
     return bm25_encoder
 
+@st.cache_resource
 def hybrid_retriever() -> PineconeHybridSearchRetriever:  
     # 1. Get Cached Embeddings Model (Dense Vector)
     embedding_model = get_embedding_model()
