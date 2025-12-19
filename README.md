@@ -111,23 +111,24 @@ Key settings can be modified in `src/config.py`:
 
 ## 🚢 Deployment
 
-### Recommended: Streamlit Cloud
+### Quick Start: Streamlit Cloud
 
 **Streamlit Cloud** is the recommended deployment platform for this application.
 
-**Steps:**
-1. Push your code to GitHub
-2. Go to [share.streamlit.io](https://share.streamlit.io)
-3. Connect your GitHub repository
-4. Configure secrets in Streamlit Cloud dashboard:
-   ```
-   GOOGLE_API_KEY=your_key
-   PINECONE_API_KEY=your_key
-   TAVILY_API_KEY=your_key
-   DB_URI=postgresql://...
-   LANGSMITH_API_KEY=your_key  # Optional
-   ```
-5. For Firebase, add credentials to Streamlit secrets as JSON
+**Quick Steps:**
+1. ✅ Push code to GitHub
+2. ✅ Go to [share.streamlit.io](https://share.streamlit.io) and connect your repo
+3. ✅ Configure secrets (see [DEPLOYMENT.md](DEPLOYMENT.md) for details)
+4. ✅ Deploy!
+
+**📖 For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+
+**Required Secrets:**
+- `GOOGLE_API_KEY` - Google Gemini API
+- `PINECONE_API_KEY` - Pinecone vector database
+- `TAVILY_API_KEY` - Tavily web search
+- `DB_URI` - PostgreSQL connection string
+- `[firestore]` - Firebase credentials (for knowledge base management)
 
 **Note:** Streamlit Cloud has resource limits. For heavy ML workloads (reranker model), consider:
 - Using CPU-only models for deployment
