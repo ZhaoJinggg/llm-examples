@@ -13,7 +13,6 @@ def get_reranker_model():
     
     # Auto detect device
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"🧐 Reranker is using device: {device.upper()}") # Debug print
     model.to(device)    
     
     # For float16 precision on GPU

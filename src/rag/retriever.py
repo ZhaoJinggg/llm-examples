@@ -12,14 +12,6 @@ def get_embedding_model():
         model_kwargs=Config.EMBEDDINGS_MODEL_KWARGS,
         encode_kwargs=Config.EMBEDDINGS_MODEL_ENCODE_KWARGS  
     )
-    # Print device information
-    try:
-        # HuggingFaceEmbeddings uses sentence-transformers, which stores the model in .client
-        device = embedding_model.client.device
-        print(f"🧐 Embedding Model is using device: {str(device).upper()}")
-    except Exception as e:
-        print(f"🧐 Embedding Model device check failed: {e}")
-        
     return embedding_model  
 
 @st.cache_resource

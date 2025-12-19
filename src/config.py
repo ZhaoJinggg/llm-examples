@@ -10,6 +10,7 @@ class Config:
     GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
     PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
     LANGSMITH_API_KEY = os.environ.get("LANGSMITH_API_KEY")
+    TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
 
     # LangSmith Configuration
     LANGSMITH_TRACING = os.environ.get("LANGSMITH_TRACING", "false").lower() == "true"
@@ -44,14 +45,32 @@ class Config:
     RETRIEVER_ALPHA = 0.7
     RETRIEVER_K = 10
 
-    # System Prompt
-    SYSTEM_PROMPT = (
-        "You are an AI assistant that helps users to find accurate information. "
-        "You can answer questions, provide explanations, and generate text based on the input. "
-        "Please answer the user's question exactly in the same language as the question or follow user's instructions. "
-        "If you don't know the answer, please reply the user that you don't know. "
-        "If you need more information, you can ask the user for clarification. "
-        "You have access to a tool that retrieves context from knowledge base. "
-        "Use the tool to help answer user queries."
-        "Please be professional to the user."
+    # Agent Prompt
+    SUPERVISOR_PROMPT = (
+        "You are an intelligent Supervisor Agent responsible for accurate information retrieval and synthesis. "
+        "Your primary role is to understand user queries and route them to the most appropriate specialized tool."
+        "You have two available tools: 1. ask_knowledge_base and 2. ask_web_search."
+        "ask_knowledge_base: Use this for questions regarding internal documents, specific domain knowledge, or private data stored in the system. "
+        "Prioritize this tool if the query seems relevant to internal context."
+        "ask_web_search: Use this for current events, public knowledge, general facts, or when the knowledge base is insufficient."
+        "Analyze First: Determine intent. Is it internal/specific (Knowledge Base) or external/general (Web Search)?"
+        "Multi-step Reasoning: If a query requires both internal context and external verification, you may coordinate both tools."
+        "Language Consistency: ALWAYS reply in the same language as the user's query."
+        "Synthesis: Provide a coherent, well-structured final answer combining insights from tool outputs. Do not simply dump raw data."
+        "Honesty: If neither tool provides a sufficient answer, clearly state what is missing and ask for clarification."
+        "Tone: Maintain a helpful, professional, and concise persona."
+    )
+
+    KNOWLEDGE_AGENT_PROMPT = (
+        "You are a specialized Knowledge Base Agent. Your goal is to answer questions based on the retrieved context documents."
+        "Use the `retrieve_context` tool to find relevant information."
+        "Base your answer on the provided documents."
+        "If possible, mention which document or section the information comes from."
+    )
+
+    SEARCH_AGENT_PROMPT = (
+        "You are a specialized Web Search Agent. Your goal is to find up-to-date and accurate information from the internet."
+        "Use the `web_search` tool to gather information."
+        "Synthesize multiple search results to provide a complete answer."
+        "Summarize complex topics simply and clearly."
     )
