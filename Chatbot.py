@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import uuid
 from src.config import Config
 from src.rag.rag_agent import Agent
 from src.rag.reranker import get_reranker_model
@@ -33,6 +34,9 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": "Hello! I can answer questions based on your knowledge base. How can I help you?"}
     ]
 
+if "thread_id" not in st.session_state:
+    st.session_state["thread_id"] = str(uuid.uuid4())
+
 # Display chat history
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
@@ -51,12 +55,19 @@ if prompt := st.chat_input("Ask a question about your documents..."):
             # Use st.status to show agent progress
             with st.status("Thinking...", expanded=True) as status:
                 
+                config = {"configurable": {"thread_id": st.session_state["thread_id"]}}
+                
                 # Stream agent updates
                 for chunk in rag_agent.agent.stream(
-                    {"messages": st.session_state.messages},
+                    {"messages": [{"role": "user", "content": prompt}]},
+                    config=config,
                     stream_mode="updates",
                 ):
                     for step, data in chunk.items():
+                        # Skip if data is None
+                        if not data:
+                            continue
+
                         # Get the last message from this step
                         if "messages" not in data or not data["messages"]:
                             continue

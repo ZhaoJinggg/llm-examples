@@ -1,0 +1,45 @@
+# Core Dependencies
+python-dotenv==1.1.1
+streamlit==1.51.0
+
+# LangChain Ecosystem
+langchain==1.0.5
+langchain-core==1.1.2
+langchain-community==0.4.1
+langchain-huggingface==1.1.0
+langchain-pinecone==0.2.13
+langchain-tavily==0.2.15
+langchain-text-splitters==1.0.0
+langchain-google-genai==4.0.0
+
+# LangGraph
+langgraph==1.0.2
+langgraph-checkpoint-postgres==3.0.2
+
+# Vector Database
+pinecone==7.3.0
+pinecone-text==0.11.0
+
+# Machine Learning & NLP
+torch==2.9.0
+transformers==4.57.1
+sentence-transformers==5.1.1
+numpy==1.26.4
+
+# Database
+psycopg-pool==3.3.0
+psycopg-binary==3.3.2
+
+# Firebase
+firebase-admin==7.1.0
+
+# Data Processing
+pandas==2.3.3
+
+# Document Processing (for langchain-community loaders)
+pypdf==6.4.2
+docx2txt==0.9
+unstructured==0.18.21
+
+# Utilities
+tavily-python==0.7.12

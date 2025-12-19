@@ -1,13 +1,45 @@
-from langchain.agents import create_agent
+from langchain.agents import create_agent, AgentState
+from langchain.agents.middleware import before_model
 from langchain.chat_models import init_chat_model
-from langchain.tools import tool
+from langchain_core.messages import RemoveMessage
 from langchain_tavily import TavilySearch
+from langchain.tools import tool
+from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.graph.message import REMOVE_ALL_MESSAGES
+from langgraph.runtime import Runtime
+from psycopg_pool import ConnectionPool
 from src.config import Config
 from src.rag.retriever import hybrid_retriever
 from src.rag.reranker import rerank_documents
+from typing import Any
+
+@before_model
+def trim_messages(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+    """Keep only the last few messages to fit context window."""
+    messages = state["messages"]
+
+    # Keep the last 10 messages
+    if len(messages) <= 10:
+        return None  # No changes needed
+
+    first_msg = messages[0]
+    recent_messages = messages[-9:]
+    new_messages = [first_msg] + recent_messages
+
+    return {
+        "messages": [
+            RemoveMessage(id=REMOVE_ALL_MESSAGES),
+            *new_messages
+        ]
+    }
 
 class Agent:
     def __init__(self):
+        # Initialize Checkpointer with Postgres using ConnectionPool    
+        self.pool = ConnectionPool(conninfo=Config.DB_URI, max_size=Config.DB_MAX_SIZE, kwargs=Config.DB_CONNECTION_KWARGS)
+        self.checkpointer = PostgresSaver(self.pool)
+        self.checkpointer.setup() # Ensure tables are created
+
         # Initialize Hybrid Retriever
         self.retriever = hybrid_retriever()
         # Initialize Tavily Search Tool
@@ -86,4 +118,6 @@ class Agent:
             model=self.model,
             tools=[ask_knowledge_base, ask_web_search],
             system_prompt=Config.SUPERVISOR_PROMPT,
+            checkpointer=self.checkpointer,
+            middleware=[trim_messages],
         )
