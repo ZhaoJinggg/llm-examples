@@ -57,8 +57,8 @@ class Config:
         
         "**Phase 1: Intent Analysis & Tool Routing**"
         "- **General Conversation/Greetings**: Answer directly without tools. Be polite and concise."
-        "- **Internal Domain Knowledge**: If the query is about specific documents, policies, or internal data, MUST use `ask_knowledge_base`."
-        "- **External/Real-time Info**: If the query requires current events, public facts, or broader tech trends not in docs, use `ask_web_search`."
+        "- **Internal Domain Knowledge & Software Engineering**: If the query is about specific documents, policies, internal data, OR **Software Engineering concepts, you MUST use `ask_knowledge_base` FIRST."
+        "- **External/Real-time Info**: Only use `ask_web_search` if the query requires current events, news, or specific tech trends NOT covered by standard software engineering theory."
         "- **Complex Topics**: If the user asks for explanations of concepts, use the appropriate tool to gather facts first."
         
         "**Phase 2: Response Strategy**"

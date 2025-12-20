@@ -8,10 +8,31 @@ from src.rag.reranker import get_reranker_model
 st.title("💬 RAG Chatbot")
 st.caption("🚀 A Streamlit chatbot powered by RAG with knowledge base")
 
+# Initialize session state
+if "messages" not in st.session_state:
+    st.session_state["messages"] = [
+        {"role": "assistant", "content": "Hello! I can answer questions based on your knowledge base. How can I help you?"}
+    ]
+
+if "thread_id" not in st.session_state:
+    st.session_state["thread_id"] = str(uuid.uuid4())
+
 with st.sidebar:
     google_api_key = st.text_input("Google API Key", key="google_api_key", type="password")
     "[Get a Google API key](https://makersuite.google.com/app/apikey)"
     "[View the source code](https://github.com/streamlit/llm-examples/blob/main/Chatbot.py)"
+    
+    st.divider()
+    st.subheader("📝 Session Management")
+    # Allow user to set a custom thread_id to resume previous conversations
+    custom_thread_id = st.text_input("Thread ID (Copy this to resume later)", value=st.session_state.get("thread_id", ""))
+    if custom_thread_id and custom_thread_id != st.session_state.get("thread_id"):
+        st.session_state["thread_id"] = custom_thread_id
+        # Clear chat history when switching threads
+        st.session_state["messages"] = [
+            {"role": "assistant", "content": "Hello! I resumed the conversation for this thread. How can I help you?"}
+        ]
+        st.rerun()
 
 # Initialize Reranker model
 with st.spinner("Loading Reranker Model..."):
@@ -27,15 +48,6 @@ def get_agent(api_key=None):
 
 # Initialize RAG Agent
 rag_agent = get_agent(google_api_key)
-
-# Initialize session state
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [
-        {"role": "assistant", "content": "Hello! I can answer questions based on your knowledge base. How can I help you?"}
-    ]
-
-if "thread_id" not in st.session_state:
-    st.session_state["thread_id"] = str(uuid.uuid4())
 
 # Display chat history
 for msg in st.session_state.messages:
