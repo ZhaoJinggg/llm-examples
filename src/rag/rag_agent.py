@@ -93,8 +93,7 @@ class Agent:
         # Wrap Sub-Agents as Supervisor Tools
         @tool
         def ask_knowledge_base(query: str):
-            """Use this tool to ask questions that might be found in the internal knowledge base documents.
-            Input should be a standalone query string."""
+            """Use this tool to ask questions that might be found in the internal knowledge base documents"""
             # Invoking the sub-agent
             result = knowledge_agent.invoke({"messages": [{"role": "user", "content": query}]})
             # Return the final response text
@@ -104,8 +103,7 @@ class Agent:
 
         @tool
         def ask_web_search(query: str):
-            """Use this tool to search for information on the public web.
-            Input should be a standalone query string."""
+            """Use this tool to search for information on the public web"""
             # Invoking the sub-agent
             result = search_agent.invoke({"messages": [{"role": "user", "content": query}]})
             # Return the final response text
